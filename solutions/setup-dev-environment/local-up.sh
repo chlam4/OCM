@@ -13,7 +13,9 @@ c1ctx="kind-${c1}"
 c2ctx="kind-${c2}"
 
 kind create cluster --name "${hub}"
-kind create cluster --name "${c1}"
+if [[ "${hub}" != "${c1}" ]]; then
+  kind create cluster --name "${c1}"
+fi
 kind create cluster --name "${c2}"
 
 kubectl config use ${hubctx}
@@ -31,3 +33,14 @@ $(echo ${joincmd} | sed "s/<cluster_name>/$c2/g")
 kubectl config use ${hubctx}
 echo "Accept join of cluster1 and cluster2"
 clusteradm accept --clusters ${c1},${c2}
+
+kubectl label managedcluster ${c1} name=${c1}
+kubectl label managedcluster ${c2} name=${c2}
+kubectl label managedcluster ${c2} cluster.open-cluster-management.io/clusterset=clusterset1
+
+clusteradm install addons --names application-manager
+clusteradm enable addons --names application-manager --clusters ${c1}
+clusteradm enable addons --names application-manager --clusters ${c2}
+
+cd ~/Playground/application
+make deploy
